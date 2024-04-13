@@ -1,0 +1,32 @@
+name: attendance
+description: A new Flutter project.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.1.5 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+    # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.2
+  # capturing camera frame
+  camera: ^0.10.5+3
+  # compressing the frame
+  image: ^4.0.17
+  # sending the frame to the backend
+  web_socket_channel: ^2.4.0
+
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+
+flutter:
+  assets:
+  - assets/images/Logo_Hust.png
+  uses-material-design: true
