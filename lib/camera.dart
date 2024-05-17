@@ -10,6 +10,10 @@ import 'package:web_socket_channel/io.dart';
 import 'package:image/image.dart' as img;
 import 'check_list.dart';
 import 'list_class.dart';
+import 'dart:developer';
+import 'ml_services.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 
 enum DetectionStatus { noFace, fail, success }
 
@@ -25,6 +29,7 @@ class _CameraScreenState extends State<CameraScreen> {
   late WebSocketChannel channel;
   DetectionStatus? status;
   String name = "";
+  final MLService _mlService = MLService();
   final List<Map<String, dynamic>> _allUsers = [
     {"id": 1, "name": "Nguyen Duc Anh", "mssv": 20204811, "present": false},
     {"id": 2, "name": "Nguyen Viet Anh", "mssv": 20200039, "present": false},
@@ -119,13 +124,46 @@ class _CameraScreenState extends State<CameraScreen> {
     await controller!.initialize();
     setState(() {});
 
-    Timer.periodic(const Duration(seconds: 1), (timer) async {
+    Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
-        final image = await controller!.takePicture();
-        final compressedImageBytes = compressImage(image.path);
-        channel.sink.add(compressedImageBytes);
-      } catch (_) {}
+        var image = await controller!.takePicture();
+        // final compressedImageBytes = compressImage(image.path);
+
+        img.Image? rimage = img.decodeImage(File(image.path).readAsBytesSync());
+        img.Image crop_img = img.copyResizeCropSquare(rimage!, 112);
+
+        File test =
+            await getImageFileFromAssets('assets/images/Nguyen Hoang Son.png');
+        img.Image? rimage_test = img.decodeImage(test.readAsBytesSync());
+        img.Image crop_img_test = img.copyResizeCropSquare(rimage_test!, 112);
+
+        List? predict = await _mlService.runInference(crop_img);
+        List? predict_test = await _mlService.runInference(crop_img_test);
+
+        print(_mlService.euclideanDistance(predict!, predict_test!).toString());
+        inspect(predict);
+
+        // Delete the image file after processing
+        final imageFile = File(image.path);
+        if (await imageFile.exists()) {
+          await imageFile.delete();
+          print('Image file deleted');
+        }
+      } catch (e) {
+        print('Error: $e');
+      }
     });
+  }
+
+  Future<File> getImageFileFromAssets(String path) async {
+    final byteData = await rootBundle.load('$path');
+
+    final file = File('${(await getTemporaryDirectory()).path}/$path');
+    await file.create(recursive: true);
+    await file.writeAsBytes(byteData.buffer
+        .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+
+    return file;
   }
 
   void initializeWebSocket() {
@@ -162,13 +200,13 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  Uint8List compressImage(String imagePath, {int quality = 85}) {
-    final image =
-        img.decodeImage(Uint8List.fromList(File(imagePath).readAsBytesSync()))!;
-    final compressedImage =
-        img.encodeJpg(image, quality: quality); // lossless compression
-    return compressedImage;
-  }
+  // Uint8List? compressImage(String imagePath, {int quality = 85}) {
+  //   final image =
+  //       img.decodeImage(Uint8List.fromList(File(imagePath).readAsBytesSync()))!;
+  //   final compressedImage =
+  //       img.encodeJpg(image, quality: quality); // lossless compression
+  //   return compressedImage;
+  // }
 
   @override
   void dispose() {

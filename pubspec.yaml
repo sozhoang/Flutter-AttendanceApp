@@ -14,9 +14,12 @@ dependencies:
   # capturing camera frame
   camera: ^0.10.5+3
   # compressing the frame
-  image: ^4.0.17
+  image: 3.1.3
   # sending the frame to the backend
   web_socket_channel: ^2.4.0
+  tflite_flutter: ^0.10.4
+  google_ml_kit: ^0.16.3
+  path_provider: ^2.1.3
 
   
 
@@ -29,4 +32,6 @@ dev_dependencies:
 flutter:
   assets:
   - assets/images/Logo_Hust.png
+  - assets/mobilefacenet.tflite
+  - assets/images/Nguyen Hoang Son.png
   uses-material-design: true
