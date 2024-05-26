@@ -34,4 +34,5 @@ flutter:
   - assets/images/Logo_Hust.png
   - assets/mobilefacenet.tflite
   - assets/images/Nguyen Hoang Son.png
+  - assets/hust_students_data.json
   uses-material-design: true

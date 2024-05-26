@@ -4,14 +4,33 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:tflite_flutter/src/bindings/tensorflow_lite_bindings_generated.dart';
 import 'package:image/image.dart' as img;
 
 class MLService {
   late Interpreter interpreter;
 
-  initInterpreter() async {
+  Future initInterpreter() async {
+    late Delegate delegate;
     try {
-      interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite');
+      delegate = GpuDelegateV2(
+          options: GpuDelegateOptionsV2(
+              isPrecisionLossAllowed: false,
+              inferencePreference: TfLiteGpuInferenceUsage
+                  .TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER,
+              inferencePriority1: TfLiteGpuInferencePriority
+                  .TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY,
+              inferencePriority2:
+                  TfLiteGpuInferencePriority.TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
+              inferencePriority3: TfLiteGpuInferencePriority
+                  .TFLITE_GPU_INFERENCE_PRIORITY_AUTO));
+
+      var interpreterOptions = InterpreterOptions()..addDelegate(delegate);
+
+      interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite',
+          options: interpreterOptions);
+
+      // interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite');
     } catch (e) {
       print('Failed to load model: $e');
     }
