@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:image/image.dart' as imglib;
 import 'check_list.dart';
 import 'list_class.dart';
@@ -30,78 +30,48 @@ class _CameraScreenState extends State<CameraScreen> {
   DetectionStatus? status;
   bool isProcessing = false;
   String name = "";
+  imglib.Image? yourImage;
   final MLService _mlService = MLService();
-  // final List<Map<String, dynamic>> _allUsers = [
-  //   {"id": 1, "name": "Nguyen Duc Anh", "mssv": 20204811, "present": false},
-  //   {"id": 2, "name": "Nguyen Viet Anh", "mssv": 20200039, "present": false},
-  //   {"id": 3, "name": "Nguyen Bao Anh", "mssv": 20206110, "present": false},
-  //   {"id": 4, "name": "Nguyen Sy Dat", "mssv": 20180036, "present": false},
-  //   {"id": 5, "name": "Ho Van Dien", "mssv": 20160611, "present": false},
-  //   {
-  //     "id": 6,
-  //     "name": "Nguyen Tai Quang Dinh",
-  //     "mssv": 20200092,
-  //     "present": false
-  //   },
-  //   {"id": 7, "name": "Ha Minh Dung", "mssv": 20200096, "present": false},
-  //   {"id": 8, "name": "Nguyen Sy Huan", "mssv": 20200253, "present": false},
-  //   {"id": 9, "name": "Dang Nhat Huy", "mssv": 20200271, "present": false},
-  //   {"id": 10, "name": "Nguyen Dinh Huy", "mssv": 20200277, "present": false},
-  //   {
-  //     "id": 11,
-  //     "name": "Nguyen Trinh Khang",
-  //     "mssv": 20200313,
-  //     "present": false
-  //   },
-  //   {"id": 12, "name": "Le Trung Kien", "mssv": 20195893, "present": false},
-  //   {"id": 13, "name": "Mac Anh Kiet", "mssv": 20200307, "present": false},
-  //   {"id": 14, "name": "Phan Thanh Long", "mssv": 20200369, "present": false},
-  //   {"id": 15, "name": "Vu Hoai Nam", "mssv": 20190059, "present": false},
-  //   {"id": 16, "name": "Nguyen Van Nghiem", "mssv": 20206206, "present": false},
-  //   {"id": 17, "name": "Nguyen Hoang Nhat", "mssv": 20204772, "present": false},
-  //   {"id": 18, "name": "Le Hai Phong", "mssv": 20200460, "present": false},
-  //   {"id": 19, "name": "Nguyen Duc Quan", "mssv": 20200505, "present": false},
-  //   {"id": 20, "name": "Nguyen Hoang Son", "mssv": 20206165, "present": false},
-  //   {"id": 21, "name": "Do Dieu Thao", "mssv": 20200599, "present": false},
-  //   {"id": 22, "name": "Dang Sy Tien", "mssv": 20200537, "present": false},
-  //   {"id": 23, "name": "Dang Tran Tien", "mssv": 20195927, "present": false},
-  //   {"id": 24, "name": "Tran Thanh Tung", "mssv": 20206184, "present": false}
-  // ];
-  List<Map<String, dynamic>> _allUsers = [];
-  String get currentStatus {
-    if (status == null) {
-      return "Initializing...";
-    }
-    switch (status!) {
-      case DetectionStatus.noFace:
-        return "No Face Detected in the screen";
-      case DetectionStatus.fail:
-        return "Unrecognized Face Detected";
-      case DetectionStatus.success:
-        return "Hi " + name;
-    }
-  }
+  List? recognitionsList;
+  late FaceDetector _faceDetector;
 
-  Color get currentStatusColor {
-    if (status == null) {
-      return Colors.grey;
-    }
-    switch (status!) {
-      case DetectionStatus.noFace:
-        return Colors.grey;
-      case DetectionStatus.fail:
-        return Colors.red;
-      case DetectionStatus.success:
-        return Colors.greenAccent;
-    }
-  }
+  List<Face> faceDetected = [];
+
+  List<Map<String, dynamic>> _allUsers = [];
+
+  // String get currentStatus {
+  //   if (status == null) {
+  //     return "Initializing...";
+  //   }
+  //   switch (status!) {
+  //     case DetectionStatus.noFace:
+  //       return "No Face Detected in the screen";
+  //     case DetectionStatus.fail:
+  //       return "Unrecognized Face Detected";
+  //     case DetectionStatus.success:
+  //       return "Hi " + name;
+  //   }
+  // }
+
+  // Color get currentStatusColor {
+  //   if (status == null) {
+  //     return Colors.grey;
+  //   }
+  //   switch (status!) {
+  //     case DetectionStatus.noFace:
+  //       return Colors.grey;
+  //     case DetectionStatus.fail:
+  //       return Colors.red;
+  //     case DetectionStatus.success:
+  //       return Colors.greenAccent;
+  //   }
+  // }
 
   @override
   void initState() {
     super.initState();
     readJsonData();
     initializeCamera();
-    // initializeWebSocket();
   }
 
   void updatePresentStatus(String message) {
@@ -114,8 +84,7 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> readJsonData() async {
-    String jsonString =
-        await rootBundle.loadString('assets/hust_students_data.json');
+    String jsonString = await rootBundle.loadString('assets/Class_256.json');
     List<Map<String, dynamic>> jsonData =
         jsonDecode(jsonString).cast<Map<String, dynamic>>();
 
@@ -125,15 +94,14 @@ class _CameraScreenState extends State<CameraScreen> {
 
       var vector = element['vector'];
       if (vector is List && vector.isNotEmpty && vector[0] is List) {
-        vector =
-            vector[0]; // Lấy phần tử đầu tiên của danh sách nếu nó là danh sách
+        vector = vector[0];
       }
       element['vector'] = (vector as List<dynamic>).map<double>((v) {
         try {
           return v.toDouble();
         } catch (e) {
           print('Error converting value to double: $v, error: $e');
-          return 0.0; // hoặc giá trị mặc định nào đó
+          return 0.0;
         }
       }).toList();
     });
@@ -167,10 +135,11 @@ class _CameraScreenState extends State<CameraScreen> {
       firstCamera,
       ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.yuv420,
+      imageFormatGroup: ImageFormatGroup.nv21,
     );
 
     await controller!.initialize();
+    loadDetector();
     setState(() {});
 
     await controller!.startImageStream((CameraImage image) async {
@@ -180,21 +149,9 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     });
 
-    Timer.periodic(const Duration(seconds: 2), (timer) async {
+    Timer.periodic(const Duration(seconds: 3), (timer) async {
       try {
-        // var image = await controller!.takePicture();
-        // // final compressedImageBytes = compressImage(image.path);
-
-        // img.Image? rimage = img.decodeImage(File(image.path).readAsBytesSync());
-        // img.Image crop_img = img.copyResizeCropSquare(rimage!, 112);
-
         isProcessing = false;
-        // // Delete the image file after processing
-        // final imageFile = File(image.path);
-        // if (await imageFile.exists()) {
-        //   await imageFile.delete();
-        //   print('Image file deleted');
-        // }
       } catch (e) {
         print('Error: $e');
       }
@@ -203,34 +160,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> embeddingImage(CameraImage image) async {
     try {
-      // imglib.Image? cnv_img = convertToImage(image);
+      runDetector(image);
 
-      // imglib.Image? crop_img = imglib.copyResizeCropSquare(cnv_img!, 112);
-
-      // File test =
-      //     await getImageFileFromAssets('assets/images/Nguyen Hoang Son.png');
-      // imglib.Image? rimage_test = imglib.decodeImage(test.readAsBytesSync());
-      // imglib.Image crop_img_test =
-      //     imglib.copyResizeCropSquare(rimage_test!, 112);
-
-      // List? predict = await _mlService.runInference(crop_img);
-      // List? predict_test = await _mlService.runInference(crop_img_test);
-
-      // print(_mlService.euclideanDistance(predict!, predict_test!).toString());
-      // inspect(predict);
-
-      imglib.Image? cnv_img = convertToImage(image);
-      imglib.Image? crop_img = imglib.copyResizeCropSquare(cnv_img!, 112);
-      List? predict = await _mlService.runInference(crop_img);
-      Map<String, dynamic> nearestCandicate =
-          await findNearestObject(_allUsers, predict!);
-      if (nearestCandicate.isNotEmpty) {
-        status = DetectionStatus.success;
-        name = nearestCandicate['name'];
-        updatePresentStatus(name);
-      } else {
-        status = DetectionStatus.fail;
-      }
       setState(() {});
     } catch (e) {
       print('Error: $e');
@@ -243,6 +174,8 @@ class _CameraScreenState extends State<CameraScreen> {
         return _convertYUV420(image);
       } else if (image.format.group == ImageFormatGroup.bgra8888) {
         return _convertBGRA8888(image);
+      } else if (image.format.group == ImageFormatGroup.nv21) {
+        return _convertNV21(image);
       }
       throw Exception('Image format not supported');
     } catch (e) {
@@ -287,6 +220,45 @@ class _CameraScreenState extends State<CameraScreen> {
     return img;
   }
 
+  imglib.Image _convertNV21(CameraImage image) {
+    final int width = image.width;
+    final int height = image.height;
+    final Uint8List yuv420sp = image.planes[0].bytes;
+    final imglib.Image outImg = imglib.Image(width, height);
+    final int frameSize = width * height;
+
+    for (int j = 0, yp = 0; j < height; j++) {
+      int uvp = frameSize + (j >> 1) * width, u = 0, v = 0;
+      for (int i = 0; i < width; i++, yp++) {
+        int y = (0xff & yuv420sp[yp]) - 16;
+        if (y < 0) y = 0;
+        if ((i & 1) == 0) {
+          v = (0xff & yuv420sp[uvp++]) - 128;
+          u = (0xff & yuv420sp[uvp++]) - 128;
+        }
+        int y1192 = 1192 * y;
+        int r = (y1192 + 1634 * v);
+        int g = (y1192 - 833 * v - 400 * u);
+        int b = (y1192 + 2066 * u);
+
+        if (r < 0)
+          r = 0;
+        else if (r > 262143) r = 262143;
+        if (g < 0)
+          g = 0;
+        else if (g > 262143) g = 262143;
+        if (b < 0)
+          b = 0;
+        else if (b > 262143) b = 262143;
+
+        outImg.setPixelRgba(i, j, ((r << 6) & 0xff0000) >> 16,
+            ((g >> 2) & 0xff00) >> 8, (b >> 10) & 0xff);
+      }
+    }
+
+    return outImg;
+  }
+
   Future<File> getImageFileFromAssets(String path) async {
     final byteData = await rootBundle.load('$path');
 
@@ -298,52 +270,119 @@ class _CameraScreenState extends State<CameraScreen> {
     return file;
   }
 
-  // void initializeWebSocket() {
-  //   // 0.0.0.0 -> 10.0.2.2 (emulator)
-  //   channel = IOWebSocketChannel.connect('ws://10.0.2.2:8765');
-  //   channel.stream.listen((dynamic data) {
-  //     debugPrint(data);
-  //     data = jsonDecode(data);
-  //     if (data['data'] == null) {
-  //       debugPrint('Server error occurred in recognizing face');
-  //       return;
-  //     }
-  //     switch (data['data']) {
-  //       case 0:
-  //         status = DetectionStatus.noFace;
-  //         break;
-  //       case 1:
-  //         status = DetectionStatus.fail;
-  //         break;
-  //       case 2:
-  //         status = DetectionStatus.success;
-  //         name = data['message'];
-  //         updatePresentStatus(name);
-  //         break;
-  //       default:
-  //         status = DetectionStatus.noFace;
-  //         break;
-  //     }
-  //     setState(() {});
-  //   }, onError: (dynamic error) {
-  //     debugPrint('Error: $error');
-  //   }, onDone: () {
-  //     debugPrint('WebSocket connection closed');
-  //   });
-  // }
+  InputImageRotation rotationIntToImageRotation(int rotation) {
+    switch (rotation) {
+      case 90:
+        return InputImageRotation.rotation90deg;
+      case 180:
+        return InputImageRotation.rotation180deg;
+      case 270:
+        return InputImageRotation.rotation270deg;
+      default:
+        return InputImageRotation.rotation0deg;
+    }
+  }
 
-  // Uint8List? compressImage(String imagePath, {int quality = 85}) {
-  //   final image =
-  //       img.decodeImage(Uint8List.fromList(File(imagePath).readAsBytesSync()))!;
-  //   final compressedImage =
-  //       img.encodeJpg(image, quality: quality); // lossless compression
-  //   return compressedImage;
-  // }
+  imglib.Image _cropFace(CameraImage image, Face faceDetected) {
+    imglib.Image? convertedImage = convertToImage(image);
+    double x = faceDetected.boundingBox.left;
+    double y = faceDetected.boundingBox.top;
+    double w = faceDetected.boundingBox.width;
+    double h = faceDetected.boundingBox.height;
+
+    return imglib.copyCrop(
+        convertedImage!, x.round(), y.round(), w.round(), h.round());
+  }
+
+  Future<void> runDetector(CameraImage cameraImage) async {
+    try {
+      InputImage _visionImage = InputImage.fromBytes(
+          bytes: cameraImage!.planes.first.bytes,
+          metadata: InputImageMetadata(
+              size: Size(
+                  cameraImage.width.toDouble(), cameraImage.height.toDouble()),
+              rotation: rotationIntToImageRotation(0), // used only in Android
+              format: InputImageFormat.nv21,
+              bytesPerRow: cameraImage.planes.first.bytesPerRow));
+
+      faceDetected = await _faceDetector.processImage(_visionImage);
+      inspect(faceDetected.first.boundingBox);
+      yourImage = _cropFace(cameraImage, faceDetected.first);
+      yourImage = imglib.copyRotate(yourImage!, 90);
+
+      // recognitionsList = faceDetected;
+
+      imglib.Image? crop_img = imglib.copyResizeCropSquare(yourImage!, 128);
+      List? predict = await _mlService.runInference(crop_img);
+      Map<String, dynamic> nearestCandicate =
+          await findNearestObject(_allUsers, predict!);
+      if (nearestCandicate.isNotEmpty) {
+        status = DetectionStatus.success;
+        name = nearestCandicate['name'];
+        updatePresentStatus(name);
+      } else {
+        status = DetectionStatus.fail;
+      }
+      setState(() {});
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> loadDetector() async {
+    _faceDetector = await GoogleMlKit.vision.faceDetector(
+      FaceDetectorOptions(performanceMode: FaceDetectorMode.accurate),
+    );
+  }
+
+  List<Widget> displayBoxesAroundRecognizedObjects(Size screen) {
+    if (recognitionsList == null) return [];
+
+    List<Widget> box = [];
+    double factorX = screen.width;
+    double factorY = screen.height;
+
+    box.add(Positioned(
+      // get top, left, width, height where result is Rect
+      left: recognitionsList?.first.boundingBox.left,
+      top: recognitionsList?.first.boundingBox.top,
+      width: recognitionsList?.first.boundingBox.width,
+      height: recognitionsList?.first.boundingBox.height,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(10.0)),
+          border: Border.all(color: Colors.pink, width: 1.0),
+        ),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: FittedBox(
+            child: Container(
+              color: Colors.pink,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.0,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    return box;
+  }
 
   @override
   void dispose() {
     controller?.dispose();
-    // channel.sink.close();
     super.dispose();
   }
 
@@ -352,6 +391,119 @@ class _CameraScreenState extends State<CameraScreen> {
     if (!(controller?.value.isInitialized ?? false)) {
       return const SizedBox();
     }
+    Size size = MediaQuery.of(context).size;
+
+    List<Widget> list = [];
+    list.add(
+      Positioned(
+        top: 0.0,
+        left: 0.0,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height - 100,
+        child: Center(
+          // Sử dụng Center để căn giữa widget
+          child: Container(
+            height: MediaQuery.of(context).size.height - 100,
+            child: AspectRatio(
+              aspectRatio: controller!.value.aspectRatio,
+              child: CameraPreview(controller!),
+            ),
+          ),
+        ),
+      ),
+    );
+    // list.add(
+    //   Align(
+    //     alignment: const Alignment(0, -0.9),
+    //     child: ElevatedButton(
+    //       style: ElevatedButton.styleFrom(surfaceTintColor: currentStatusColor),
+    //       child: Text(
+    //         currentStatus,
+    //         style: const TextStyle(fontSize: 20),
+    //       ),
+    //       onPressed: () {},
+    //     ),
+    //   ),
+    // );
+    list.add(Align(
+      alignment: const Alignment(0, 0.90),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+        child: Text(
+          "End Process",
+          style: const TextStyle(fontSize: 22, color: Colors.white),
+        ),
+        onPressed: () {
+          Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => CheckList(allUsers: _allUsers),
+              ));
+        },
+      ),
+    ));
+
+    // if (yourImage != null) {
+    //   list.add(
+    //     Align(
+    //       alignment: Alignment.topRight,
+    //       child: Image.memory(
+    //         Uint8List.fromList(imglib.encodePng(yourImage!)),
+    //         width: 100, // set the desired width
+    //         height: 100, // set the desired height
+    //       ),
+    //     ),
+    //   );
+    // }
+
+    if (yourImage != null) {
+      list.add(
+        Stack(
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: Image.memory(
+                Uint8List.fromList(imglib.encodePng(yourImage!)),
+                width: 100, // set the desired width
+                height: 100, // set the desired height
+              ),
+            ),
+            // Positioned(
+            //   top: 0,
+            //   left: 0,
+            //   right: 0,
+            //   child: Container(
+            //     padding: EdgeInsets.all(10.0),
+            //     child: Image.memory(
+            //       Uint8List.fromList(imglib.encodePng(yourImage!)),
+            //       width: 100, // set the desired width
+            //       height: 100, // set the desired height
+            //     ),
+            //   ),
+            // ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.all(8.0), // adjust padding as needed
+                // color: Colors.black.withOpacity(0.5), // overlay color
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    list.addAll(displayBoxesAroundRecognizedObjects(size));
 
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(
@@ -362,43 +514,7 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
       ),
       child: Stack(
-        children: [
-          Positioned.fill(
-            child: AspectRatio(
-              aspectRatio: controller!.value.aspectRatio,
-              child: CameraPreview(controller!),
-            ),
-          ),
-          Align(
-            alignment: const Alignment(0, -0.9),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  surfaceTintColor: currentStatusColor),
-              child: Text(
-                currentStatus,
-                style: const TextStyle(fontSize: 20),
-              ),
-              onPressed: () {},
-            ),
-          ),
-          Align(
-            alignment: const Alignment(0, 0.90),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: Text(
-                "End Process",
-                style: const TextStyle(fontSize: 22, color: Colors.white),
-              ),
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    CupertinoPageRoute(
-                      builder: (context) => CheckList(allUsers: _allUsers),
-                    ));
-              },
-            ),
-          )
-        ],
+        children: list,
       ),
     );
   }

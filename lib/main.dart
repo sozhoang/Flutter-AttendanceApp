@@ -60,7 +60,7 @@ class Home extends StatelessWidget {
                         surfaceTintColor:
                             const Color.fromARGB(255, 244, 122, 113)),
                     child: const Text(
-                      'Start',
+                      'Begin',
                       style: TextStyle(fontSize: 28, color: Colors.white),
                     ),
                     onPressed: () {

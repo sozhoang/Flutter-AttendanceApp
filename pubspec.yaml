@@ -35,4 +35,9 @@ flutter:
   - assets/mobilefacenet.tflite
   - assets/images/Nguyen Hoang Son.png
   - assets/hust_students_data.json
+  - assets/model.tflite
+  - assets/model_final.tflite
+  - assets/Class_256.json
+
   uses-material-design: true
+

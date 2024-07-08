@@ -27,7 +27,7 @@ class MLService {
 
       var interpreterOptions = InterpreterOptions()..addDelegate(delegate);
 
-      interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite',
+      interpreter = await Interpreter.fromAsset('assets/model_final.tflite',
           options: interpreterOptions);
 
       // interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite');
@@ -38,12 +38,12 @@ class MLService {
 
   Future<List?> runInference(img.Image image) async {
     List input = _imageToByteListFloat32(image);
-    input = input.reshape([1, 112, 112, 3]);
-    List output = List.generate(1, (index) => List.filled(192, 0));
+    input = input.reshape([1, 128, 128, 3]);
+    List output = List.generate(1, (index) => List.filled(256, 0));
 
     await initInterpreter();
     interpreter.run(input, output);
-    output = output.reshape([192]);
+    output = output.reshape([256]);
     List predict = List.from(output);
     return predict;
   }
@@ -58,12 +58,12 @@ class MLService {
   }
 
   Float32List _imageToByteListFloat32(img.Image image) {
-    var convertedBytes = Float32List(1 * 112 * 112 * 3);
+    var convertedBytes = Float32List(1 * 128 * 128 * 3);
     var buffer = Float32List.view(convertedBytes.buffer);
     int pixelIndex = 0;
 
-    for (var i = 0; i < 112; i++) {
-      for (var j = 0; j < 112; j++) {
+    for (var i = 0; i < 128; i++) {
+      for (var j = 0; j < 128; j++) {
         var pixel = image.getPixel(j, i);
         buffer[pixelIndex++] = (img.getRed(pixel)) / 255;
         buffer[pixelIndex++] = (img.getGreen(pixel)) / 255;

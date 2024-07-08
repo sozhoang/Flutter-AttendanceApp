@@ -45,12 +45,12 @@ class SelectClass extends StatelessWidget {
                     children: [
                       Text(
                         '143823 - Time Series Analysis - MI4050',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
+                        style: TextStyle(fontSize: 12, color: Colors.black),
                       ),
                       SizedBox(height: 0.5),
                       Text(
                         'Lecturers: Nguyen Thi Ngoc Anh',
-                        style: TextStyle(fontSize: 12, color: Colors.black),
+                        style: TextStyle(fontSize: 10, color: Colors.black),
                       )
                     ],
                   ),

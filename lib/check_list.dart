@@ -32,13 +32,13 @@ class _CheckListState extends State<CheckList> {
                 elevation: 4,
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 child: ListTile(
-                  leading: Text(
-                    widget.allUsers[index]["id"].toString(),
-                    style: const TextStyle(fontSize: 24, color: Colors.white),
-                  ),
+                  // leading: Text(
+                  //   widget.allUsers[index]["id"].toString(),
+                  //   style: const TextStyle(fontSize: 10, color: Colors.white),
+                  // ),
                   title: Text(widget.allUsers[index]['name'],
                       style: TextStyle(color: Colors.white)),
-                  subtitle: Text('${widget.allUsers[index]["mssv"].toString()}',
+                  subtitle: Text('${widget.allUsers[index]["id"].toString()}',
                       style: TextStyle(color: Colors.white)),
                   trailing:
                       widget.allUsers[index]['present'].toString() == 'true'
